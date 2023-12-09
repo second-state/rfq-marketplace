@@ -2,13 +2,13 @@ use webhook_flows::{create_endpoint, request_handler, send_response, route::{get
 use flowsnet_platform_sdk::logger;
 use serde_json::Value;
 use serde_json::json;
+use std::fs;
 use std::collections::HashMap;
 use std::str::FromStr;
-use ethers_signers::{LocalWallet, Signer, MnemonicBuilder, coins_bip39::English};
+use ethers_signers::{LocalWallet, Signer};
 use ethers_core::types::{NameOrAddress, Bytes, U256, U64, H160, TransactionRequest, transaction::eip2718::TypedTransaction};
 use ethers_core::abi::{Abi, Function, Token};
 use ethers_core::utils::hex;
-use ethers_core::rand;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 
@@ -31,7 +31,7 @@ async fn handler(_headers: Vec<(String, String)>, _subpath: String, _qry: HashMa
     router
         .insert(
             "/response-exchange",
-            vec![get(reponse_exchange)],
+            vec![get(response_exchange)],
         )
         .unwrap();
 
@@ -61,28 +61,30 @@ async fn handler(_headers: Vec<(String, String)>, _subpath: String, _qry: HashMa
     }
 }
 
-fn init_rpc(path: &str, _qry: &HashMap<String, Value>) -> (String, u64, LocalWallet){
+fn init_rpc(path: &str, _qry: &HashMap<String, Value>, private_key: &str) -> (String, u64, NameOrAddress, LocalWallet){
     logger::init();
     log::info!("{} Query -- {:?}", path, _qry);
     
     let rpc_node_url = std::env::var("RPC_NODE_URL").unwrap_or("https://sepolia-rollup.arbitrum.io/rpc".to_string());
     let chain_id = std::env::var("CHAIN_ID").unwrap_or("421614".to_string()).parse::<u64>().unwrap_or(421614u64);
+    let contract_address = NameOrAddress::from(H160::from_str(std::env::var("CONTRACT_ADDRESS").unwrap().as_str()).unwrap());
     let wallet: LocalWallet = private_key
     .parse::<LocalWallet>()
     .unwrap()
     .with_chain_id(chain_id);
-    return (rpc_node_url, chain_id, wallet);
+    return (rpc_node_url, chain_id, contract_address, wallet);
 }
 
 async fn create_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, wallet) = init_rpc("create_exchange", &_qry);
+    let private_key = _qry.get("private-key").unwrap().as_str().unwrap();
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("create_exchange", &_qry, private_key);
     let token_a = H160::from_str(_qry.get("tokenA").unwrap().as_str().unwrap()).unwrap();
     let token_b = H160::from_str(_qry.get("tokenB").unwrap().as_str().unwrap()).unwrap();
     let amount =  U256::from_dec_str(_qry.get("amount").unwrap().as_str().unwrap()).unwrap();
-    let contract_call_params = vec![Token::Address(tokenA), Token::Address(tokenB), Token::Uint(amount)];
+    let contract_call_params = vec![Token::Address(token_a.into()), Token::Address(token_b.into()), Token::Uint(amount.into())];
     let data = create_contract_call_data("createExchange", contract_call_params).unwrap();
 
-    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_addrss, data, value).await.unwrap().as_str()]);
+    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
     let resp =json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
 
     log::info!("resp: {:#?}", resp);
@@ -94,14 +96,15 @@ async fn create_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, 
     );
 }
 
-async fn reponse_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, wallet) = init_rpc("create_exchange", &_qry);
+async fn response_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
+    let private_key = _qry.get("private-key").unwrap().as_str().unwrap();
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("response_exchange", &_qry, private_key);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     let amount =  U256::from_dec_str(_qry.get("amount").unwrap().as_str().unwrap()).unwrap();
-    let contract_call_params = vec![Token::Uint(request_id), Token::Uint(amount)];
+    let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(amount.into())];
     let data = create_contract_call_data("bidToken", contract_call_params).unwrap();
 
-    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_addrss, data, value).await.unwrap().as_str()]);
+    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
     let resp =json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
 
     log::info!("resp: {:#?}", resp);
@@ -115,13 +118,14 @@ async fn reponse_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String,
 
 
 async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, wallet) = init_rpc("create_exchange", &_qry);
+    let private_key = _qry.get("private-key").unwrap().as_str().unwrap();
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("accept_exchange", &_qry, private_key);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     let amount =  U256::from_dec_str(_qry.get("amount").unwrap().as_str().unwrap()).unwrap();
-    let contract_call_params = vec![Token::Uint(request_id), Token::Uint(amount)];
+    let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(amount.into())];
     let data = create_contract_call_data("bidToken", contract_call_params).unwrap();
 
-    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_addrss, data, value).await.unwrap().as_str()]);
+    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
     let resp =json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
 
     log::info!("resp: {:#?}", resp);
@@ -134,22 +138,23 @@ async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, 
 }
 
 async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, wallet) = init_rpc("create_exchange", &_qry);
+    let private_key = _qry.get("private-key").unwrap().as_str().unwrap();
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("withdraw", &_qry, private_key);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     let address =  H160::from_str(_qry.get("address").unwrap().as_str().unwrap()).unwrap();
     let is_owner = false;
-    let buy_id: U256;
+    let buy_id: U256 = U256::from(0);
     let contract_call_params :Vec<Token>;
     // Not implement that handle if address is owner.
 
     if is_owner {
-        contract_call_params = vec![Token::Uint(request_id)];
+        contract_call_params = vec![Token::Uint(request_id.into())];
     }else{
-        contract_call_params = vec![Token::Uint(request_id), Token::Uint(buy_id)];
+        contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
     }
     let data = create_contract_call_data("withdraw", contract_call_params).unwrap();
 
-    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_addrss, data, value).await.unwrap().as_str()]);
+    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
     let resp =json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
 
     log::info!("resp: {:#?}", resp);
@@ -164,15 +169,13 @@ async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>,
 
 pub fn create_contract_call_data(name: &str, tokens: Vec<Token>) -> Result<Bytes> {
     
-    let contract_abi = fs::read_to_string("abi.json")
-    .expect("Read ABI failed.");
-    let abi: Abi = serde_json::from_str(contract_abi).unwrap();
+    let contract_abi = fs::read_to_string("abi.json").expect("Read ABI failed.");
+    let abi: Abi = serde_json::from_str(&contract_abi).unwrap();
     let function: &Function = abi
         .functions()
         .find(|&f| f.name == name)
         .ok_or("Function not found in ABI")?;
 
-    let receiver: H160 = receiver_address;
     let data = function.encode_input(&tokens).unwrap();
 
     Ok(Bytes::from(data))
