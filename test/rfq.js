@@ -22,24 +22,26 @@ describe("RFQ", function () {
   }
 
   describe("Deployment", function () {
-    it("Create exchange process", async function () {
+    it("Full exchange process", async function () {
       const [owner, exchangeCreator, buyer] = await ethers.getSigners();
       const { rfq, requestLiveTime } = await deployRFQ();
       const { token: tokenA } = await deployToken(exchangeCreator, 10);
       const { token: tokenB } = await deployToken(buyer, 10);
       
       tokenA.connect(exchangeCreator).approve(rfq.target, 10);
-      let requestId = await rfq.connect(exchangeCreator).createExchange(tokenA.target, tokenB.target, 10);
-      console.log(requestId)
+      let createTx = await rfq.connect(exchangeCreator).createExchange(tokenA.target, tokenB.target, 10);
+      let receipt = await createTx.wait();
+      let requestId = receipt.logs[1].args[1];
       tokenB.connect(buyer).approve(rfq.target, 10);
-      let buyerId = await rfq.connect(buyer).bidToken(requestId, 10);
-      await (await rfq.acceptBid(requestId, buyerId)).wait();
-
-      await (await rfq.connect(exchangeCreator).withdraw(requestId)).wait();
-      await (await rfq.connect(buyer).acceptBid(requestId, buyerId)).wait();
-
-      expect(await tokenA.balance(buyer)).to.equal(10);
-      expect(await tokenB.balance(exchangeCreator)).to.equal(10);
+      let bidTx = await rfq.connect(buyer).bidToken(requestId, 10);
+      receipt = await bidTx.wait();
+      let buyerId = receipt.logs[1].args[0];
+      await (await rfq.connect(exchangeCreator).acceptBid(requestId, buyerId)).wait();
+      await (await rfq.connect(exchangeCreator)["withdraw(uint256)"](requestId)).wait();
+      await (await rfq.connect(buyer)["withdraw(uint256,uint256)"](requestId, buyerId)).wait();
+      
+      expect(await tokenA.balanceOf(buyer)).to.equal(10);
+      expect(await tokenB.balanceOf(exchangeCreator)).to.equal(10);
     });
 
   });

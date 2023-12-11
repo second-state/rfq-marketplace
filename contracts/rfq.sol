@@ -9,7 +9,7 @@ import './IERC20.sol';
 contract RFQ {
     
     event exchangeEvent(address indexed owner, uint indexed requestId, address tokenA, address tokenB, uint amount);
-    event bidEvent(address indexed buyer, uint indexed requestId, uint amount);
+    event bidEvent(uint indexed buyerId, address buyer, uint indexed requestId, uint amount);
 
     // Buyer detai;
     struct depositInfo {
@@ -47,11 +47,9 @@ contract RFQ {
     */
     modifier checkRequestStatus(uint id, bool isValid) {
         if(isValid){
-            require(block.timestamp <= requestList[id].expireTime, "");
-            require(!requestList[id].finish, "");
+            require(block.timestamp <= requestList[id].expireTime || !requestList[id].finish, "");
         } else {
-            require(block.timestamp > requestList[id].expireTime, "");
-            require(requestList[id].finish, "");
+            require(block.timestamp > requestList[id].expireTime || requestList[id].finish, "");
         }
         _;
     }
@@ -105,7 +103,7 @@ contract RFQ {
         uint buyerId = requestList[requestId].depositSize;
         requestList[requestId].depositSize += 1;
         depositList[requestId][buyerId] = newDeposit;
-        emit bidEvent(msg.sender, requestId, amount);
+        emit bidEvent(buyerId, msg.sender, requestId, amount);
         return buyerId;
     }
 
@@ -125,9 +123,9 @@ contract RFQ {
     * @dev Exchange request owner whithdraw token from a ended exchange request.
     * @param requestId The exchange request id.
     */
-    function whithdraw(uint requestId) external checkRequestStatus(requestId, false) {
+    function withdraw(uint requestId) external checkRequestStatus(requestId, false) {
         require(requestList[requestId].owner == msg.sender, "");
-        if(requestList[requestId].finish == false){
+        if(requestList[requestId].finish == true){
             uint buyerId = requestList[requestId].buyer;
             uint amount = depositList[requestId][buyerId].amount;
             depositList[requestId][buyerId].amount -= amount;
@@ -143,9 +141,9 @@ contract RFQ {
     * @dev Exchange request buyer whithdraw token from a ended exchange request.
     * @param requestId The exchange request id.
     */
-    function whithdraw(uint requestId, uint buyerId) external {
+    function withdraw(uint requestId, uint buyerId) external {
         require(depositList[requestId][buyerId].owner == msg.sender, "");
-        if(requestList[requestId].finish == false && depositList[requestId][requestList[requestId].buyer].owner == msg.sender){
+        if(requestList[requestId].finish == true && depositList[requestId][requestList[requestId].buyer].owner == msg.sender){
             uint amount = requestList[requestId].lockAmount;
             requestList[requestId].lockAmount -= amount;
             IERC20(requestList[requestId].tokenA).transfer(msg.sender, amount);
