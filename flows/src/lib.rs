@@ -84,8 +84,9 @@ fn init_rpc(path: &str, _qry: &HashMap<String, Value>) -> (String, u64, NameOrAd
     let chain_id = std::env::var("CHAIN_ID").unwrap_or("421614".to_string()).parse::<u64>().unwrap_or(421614u64);
     let contract_address = NameOrAddress::from(H160::from_str(std::env::var("CONTRACT_ADDRESS").unwrap().as_str()).unwrap());
     let mut wallet: LocalWallet = LocalWallet::new(&mut thread_rng());
-    if let Some(private_key) = _qry.get("private-key") {
-        let private_key = private_key.as_str().unwrap();
+    
+    if let Ok(private_key) = std::env::var("PRIVATE_KEY") {
+        let private_key = private_key.as_str();
         wallet = private_key
         .parse::<LocalWallet>()
         .unwrap()
