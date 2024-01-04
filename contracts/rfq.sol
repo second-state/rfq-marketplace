@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import './IERC20.sol';
+import './OpenZeppelin_v4_9_0/openzeppelin-contracts/contracts/access/Ownable.sol';
 
 /**
  * @title RFQ
  * @dev RFQ logic
  */
-contract RFQ {
+contract RFQ is Ownable {
     
     event exchangeEvent(address indexed owner, uint indexed requestId, address tokenA, address tokenB, uint amount);
     event bidEvent(uint indexed buyerId, address buyer, uint indexed requestId, uint amount);
@@ -38,7 +39,7 @@ contract RFQ {
     * @dev Initialize RFQ necessary parameters.
     * @param _requestLiveTime Request validity period.
     */
-    constructor(uint _requestLiveTime) {
+    constructor(uint _requestLiveTime) Ownable(msg.sender){
         requestLiveTime = _requestLiveTime;
     }
 
@@ -60,6 +61,22 @@ contract RFQ {
     modifier checkApprove(address token, uint amount) {
         require(IERC20(token).allowance(msg.sender, address(this)) >= amount, "You should approve enough token.");
         _;
+    }
+
+    /**
+    * @dev Set requestLiveTime
+    * @param _requestLiveTime new requestLiveTime value
+    */
+    function setRequestLiveTime(uint _requestLiveTime) external onlyOwner() {
+        requestLiveTime = _requestLiveTime;
+    }
+
+    /**
+    * @dev Get requestLiveTime
+    * @return requestLiveTime value
+    */
+    function getRequestLiveTime() external view returns(uint) {
+        return requestLiveTime;
     }
 
     /**
