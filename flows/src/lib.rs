@@ -157,29 +157,45 @@ async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, 
 async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
     let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("withdraw", &_qry);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
-    let address =  H160::from_str(_qry.get("address").unwrap().as_str().unwrap()).unwrap();
-    let is_owner = false;
-    let contract_call_params :Vec<Token>;
-    
+    let address = format!("{:?}", wallet.address());
+    let mut is_owner = false;
+    let mut contract_call_params :Vec<Token> = vec!();
+    let log = get_log(&rpc_node_url, format!("{:?}", contract_address.as_address().unwrap()).as_str(), json!(["0xb981be592ff12d76d951facfbbe36a4fd0607fef8ab19502903f32c5fe451460", null, format!("{:#066x}", request_id.as_usize())])).await.unwrap();
+    if format!("0x{}", &(log[0]["topics"][1].to_string()).trim_matches('"')[26..]) == address {
+        is_owner = true;
+    }
     if is_owner {
         contract_call_params = vec![Token::Uint(request_id.into())];
     }else{
-        
-        let buy_id: U256 = U256::from(0);
-        contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
+        let log = get_log(&rpc_node_url, format!("{:?}", contract_address.as_address().unwrap()).as_str(), json!(["0x5f809e0f670ff1d5d393b4775ee4f31f942aa16ca64ad7b62b25a95920fa37d1", null, format!("{:#066x}", request_id.as_usize())])).await.unwrap();
+        let len = log.as_array().unwrap().len();
+        for idx in 0..len{
+            let now = log.get(idx).unwrap();
+            if address == format!("0x{}", &now["data"].as_str().unwrap()[26..66]) {
+                let buy_id: U256 = U256::from_str(&(now["topics"][1].to_string()).trim_matches('"')[26..]).unwrap();
+                contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
+                break;
+            }
+        }
     }
-    let data = create_contract_call_data("withdraw", contract_call_params).unwrap();
+    let resp: String;
 
-    let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
-    let resp = json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
-
+    if contract_call_params.len() != 0 {
+        let data = create_contract_call_data("withdraw", contract_call_params).unwrap();
+        
+        let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
+        resp = json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
+    } else {
+        resp = "Not fund!".to_string();
+    }
+    
     log::info!("resp: {:#?}", resp);
-
     send_response(
         200,
         vec![(String::from("content-type"), String::from("text/html"))],
         resp.into_bytes().to_vec(),
     );
+
 }
 
 async fn get_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){

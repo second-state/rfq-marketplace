@@ -15,7 +15,7 @@ pub fn create_contract_call_data(name: &str, tokens: Vec<Token>) -> Result<Bytes
     let abi: Abi = serde_json::from_str(&contract_abi).unwrap();
     let function: &Function = abi
         .functions()
-        .find(|&f| f.name == name)
+        .find(|&f| f.name == name && f.inputs.len() == tokens.len())
         .ok_or("Function not found in ABI")?;
 
     let data = function.encode_input(&tokens).unwrap();
