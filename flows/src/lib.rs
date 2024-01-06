@@ -138,9 +138,9 @@ async fn response_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String
 async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
     let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("accept_exchange", &_qry);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
-    let amount =  U256::from_dec_str(_qry.get("amount").unwrap().as_str().unwrap()).unwrap();
-    let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(amount.into())];
-    let data = create_contract_call_data("bidToken", contract_call_params).unwrap();
+    let buy_id =  U256::from_dec_str(_qry.get("buy-id").unwrap().as_str().unwrap()).unwrap();
+    let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
+    let data = create_contract_call_data("acceptBid", contract_call_params).unwrap();
 
     let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
     let resp =json_rpc(&rpc_node_url, "eth_sendRawTransaction", tx_params).await.expect("Failed to send raw transaction.");
@@ -183,11 +183,54 @@ async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>,
 }
 
 async fn get_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("withdraw", &_qry);
-
+    let (rpc_node_url, _, contract_address, _) = init_rpc("withdraw", &_qry);
+    let contract_address = format!("{:?}", contract_address.as_address().unwrap());
+    // Keccak-256 exchangeEvent(address,uint256,address,address,uint256)
+    let log = get_log(&rpc_node_url, &contract_address, json!(["0xb981be592ff12d76d951facfbbe36a4fd0607fef8ab19502903f32c5fe451460"])).await.unwrap();
+    let mut event: Vec<Value> = vec!();
+    let len = log.as_array().unwrap().len();
+    for idx in 0..len{
+        let now = log.get(idx).unwrap();
+        let new_vec = json!({
+            "owner": format!("0x{}", &(now["topics"][1].to_string()).trim_matches('"')[26..]),
+            "requestId": U256::from_str(&(now["topics"][2].to_string()).trim_matches('"')[2..]).unwrap().to_string(),
+            "tokenA": format!("0x{}", &now["data"].as_str().unwrap()[26..66]),
+            "tokenB": format!("0x{}", &now["data"].as_str().unwrap()[67..130]),
+            "amount": U256::from_str(&now["data"].as_str().unwrap()[131..194]).unwrap().to_string(),
+        });
+        event.push(new_vec);
+    } 
+    let res_json:Value = json!(Into::<Value>::into(event));
+    
+    send_response(
+        200,
+        vec![(String::from("content-type"), String::from("application/json"))],
+        serde_json::to_vec_pretty(&res_json).unwrap(),
+    );
 }
 
 async fn get_response(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("withdraw", &_qry);
+    let (rpc_node_url, _, contract_address, _) = init_rpc("withdraw", &_qry);
+    let contract_address = format!("{:?}", contract_address.as_address().unwrap());
+    // Keccak-256 bidEvent(uint256,address,uint256,uint256)
+    let log = get_log(&rpc_node_url, &contract_address, json!(["0x5f809e0f670ff1d5d393b4775ee4f31f942aa16ca64ad7b62b25a95920fa37d1"])).await.unwrap();
+    let mut event: Vec<Value> = vec!();
+    let len = log.as_array().unwrap().len();
+    for idx in 0..len{
+        let now = log.get(idx).unwrap();
+        let new_vec = json!({
+            "buyerId": U256::from_str(&(now["topics"][1].to_string()).trim_matches('"')[26..]).unwrap().to_string(),
+            "buyer": format!("0x{}", &now["data"].as_str().unwrap()[26..66]),
+            "requestId": U256::from_str(&(now["topics"][2].to_string()).trim_matches('"')[2..]).unwrap().to_string(),
+            "amount": U256::from_str(&now["data"].as_str().unwrap()[67..130]).unwrap().to_string(),
+        });
+        event.push(new_vec);
+    } 
+    let res_json:Value = json!(Into::<Value>::into(event));
     
+    send_response(
+        200,
+        vec![(String::from("content-type"), String::from("application/json"))],
+        serde_json::to_vec_pretty(&res_json).unwrap(),
+    );
 }
