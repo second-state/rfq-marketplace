@@ -76,18 +76,17 @@ async fn handler(_headers: Vec<(String, String)>, _subpath: String, _qry: HashMa
     }
 }
 
-fn init_rpc(path: &str, _qry: &HashMap<String, Value>, _body: &Vec<u8>) -> (String, u64, NameOrAddress, LocalWallet){
+fn init_rpc(path: &str, _qry: &HashMap<String, Value>, _body: Vec<u8>) -> (String, u64, NameOrAddress, LocalWallet){
     logger::init();
     log::info!("{} Query -- {:?}", path, _qry);
-    log::info!("{} Body -- {:?}", path, _body);
     
     let rpc_node_url = std::env::var("RPC_NODE_URL").unwrap_or("https://mainnet.cybermiles.io".to_string());
     let chain_id = std::env::var("CHAIN_ID").unwrap_or("18".to_string()).parse::<u64>().unwrap_or(18u64);
     let contract_address = NameOrAddress::from(H160::from_str(std::env::var("CONTRACT_ADDRESS").unwrap().as_str()).unwrap());
     let mut wallet: LocalWallet = LocalWallet::new(&mut thread_rng());
     
-    if let Ok(private_key) = std::env::var("PRIVATE_KEY") {
-        let private_key = private_key.as_str();
+    if let Some(private_key) = serde_json::from_str::<Value>(String::from_utf8(_body).unwrap().as_str()).unwrap().get("PRIVATE_KEY") {
+        let private_key = private_key.as_str().unwrap();
         wallet = private_key
         .parse::<LocalWallet>()
         .unwrap()
@@ -97,7 +96,7 @@ fn init_rpc(path: &str, _qry: &HashMap<String, Value>, _body: &Vec<u8>) -> (Stri
 }
 
 async fn submit_request(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("submit_request", &_qry, &_body);
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("submit_request", &_qry, _body);
     let token_a = H160::from_str(_qry.get("tokenA").unwrap().as_str().unwrap()).unwrap();
     let token_b = H160::from_str(_qry.get("tokenB").unwrap().as_str().unwrap()).unwrap();
     let amount =  U256::from_dec_str(_qry.get("amount").unwrap().as_str().unwrap()).unwrap();
@@ -117,7 +116,7 @@ async fn submit_request(_headers: Vec<(String, String)>, _qry: HashMap<String, V
 }
 
 async fn submit_response(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("response_exchange", &_qry, &_body);
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("response_exchange", &_qry, _body);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     let amount =  U256::from_dec_str(_qry.get("amount").unwrap().as_str().unwrap()).unwrap();
     let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(amount.into())];
@@ -137,7 +136,7 @@ async fn submit_response(_headers: Vec<(String, String)>, _qry: HashMap<String, 
 
 
 async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("accept_exchange", &_qry, &_body);
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("accept_exchange", &_qry, _body);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     let buy_id =  U256::from_dec_str(_qry.get("buy-id").unwrap().as_str().unwrap()).unwrap();
     let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
@@ -156,7 +155,7 @@ async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, 
 }
 
 async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("withdraw", &_qry, &_body);
+    let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("withdraw", &_qry, _body);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     let address = format!("{:?}", wallet.address());
     let mut is_owner = false;
@@ -200,7 +199,7 @@ async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>,
 }
 
 async fn list_requests(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, _, contract_address, _) = init_rpc("list_requests", &_qry, &_body);
+    let (rpc_node_url, _, contract_address, _) = init_rpc("list_requests", &_qry, _body);
     let contract_address = format!("{:?}", contract_address.as_address().unwrap());
     // Keccak-256 exchangeEvent(address,uint256,address,address,uint256)
     let log = get_log(&rpc_node_url, &contract_address, json!(["0xb981be592ff12d76d951facfbbe36a4fd0607fef8ab19502903f32c5fe451460"])).await.unwrap();
@@ -227,7 +226,7 @@ async fn list_requests(_headers: Vec<(String, String)>, _qry: HashMap<String, Va
 }
 
 async fn get_request(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
-    let (rpc_node_url, _, contract_address, _) = init_rpc("get_request", &_qry, &_body);
+    let (rpc_node_url, _, contract_address, _) = init_rpc("get_request", &_qry, _body);
     let contract_address = format!("{:?}", contract_address.as_address().unwrap());
     // Keccak-256 bidEvent(uint256,address,uint256,uint256)
     let log = get_log(&rpc_node_url, &contract_address, json!(["0x5f809e0f670ff1d5d393b4775ee4f31f942aa16ca64ad7b62b25a95920fa37d1"])).await.unwrap();
