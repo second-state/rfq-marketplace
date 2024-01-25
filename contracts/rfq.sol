@@ -4,13 +4,13 @@ import './IERC20.sol';
 import './OpenZeppelin_v4_9_0/openzeppelin-contracts/contracts/access/Ownable.sol';
 
 /**
- * @title RFQ
- * @dev RFQ logic
+ * @title OtomicMarket
+ * @dev OtomicMarket logic
  */
-contract RFQ is Ownable {
+contract OtomicMarket is Ownable {
     
     event exchangeEvent(address indexed owner, uint indexed requestId, address tokenA, address tokenB, uint amount);
-    event bidEvent(uint indexed buyerId, address buyer, uint indexed requestId, uint amount);
+    event bidEvent(uint indexed responseId, address buyer, uint indexed requestId, uint amount);
 
     // Buyer detai;
     struct depositInfo {
@@ -86,7 +86,7 @@ contract RFQ is Ownable {
     * @param amount Amount of tokenA that the caller wants to swap out.
     * @return Request id.
     */
-    function createExchange(address tokenA, address tokenB, uint amount) external checkApprove(tokenA, amount) returns(uint) {
+    function submitRequest(address tokenA, address tokenB, uint amount) external checkApprove(tokenA, amount) returns(uint) {
         IERC20(tokenA).transferFrom(msg.sender, address(this), amount);
         uint requestId = requestList.length;
         requestList.push();
@@ -106,9 +106,9 @@ contract RFQ is Ownable {
     * @dev Response an exchange request with the amount of tokenB to buy tokenA.
     * @param requestId The exchange request id.
     * @param amount The amount of tokenB that the caller wants to swap out.
-    * @return The buyerId of the caller response.
+    * @return The responseId of the caller response.
     */
-    function bidToken(uint requestId, uint amount) 
+    function submitResponse(uint requestId, uint amount) 
     external 
     checkRequestStatus(requestId, true)
     checkApprove(requestList[requestId].tokenB, amount)
@@ -117,23 +117,23 @@ contract RFQ is Ownable {
         depositInfo memory newDeposit;
         newDeposit.owner = msg.sender;
         newDeposit.amount = amount;
-        uint buyerId = requestList[requestId].depositSize;
+        uint responseId = requestList[requestId].depositSize;
         requestList[requestId].depositSize += 1;
-        depositList[requestId][buyerId] = newDeposit;
-        emit bidEvent(buyerId, msg.sender, requestId, amount);
-        return buyerId;
+        depositList[requestId][responseId] = newDeposit;
+        emit bidEvent(responseId, msg.sender, requestId, amount);
+        return responseId;
     }
 
 
     /**
     * @dev Accept the reponse of the exchange request.
     * @param requestId The exchange request id.
-    * @param buyerId Accept the exchange with the buyer, which id is the index of depositList.
+    * @param responseId Accept the exchange with the response id, which id is the index of depositList.
     */
-    function acceptBid(uint requestId, uint buyerId) external checkRequestStatus(requestId, true) {
+    function acceptBid(uint requestId, uint responseId) external checkRequestStatus(requestId, true) {
         require(requestList[requestId].owner == msg.sender , "");
         requestList[requestId].finish = true;
-        requestList[requestId].buyer = buyerId;
+        requestList[requestId].buyer = responseId;
     }
 
     /**
@@ -143,9 +143,9 @@ contract RFQ is Ownable {
     function withdraw(uint requestId) external checkRequestStatus(requestId, false) {
         require(requestList[requestId].owner == msg.sender, "");
         if(requestList[requestId].finish == true){
-            uint buyerId = requestList[requestId].buyer;
-            uint amount = depositList[requestId][buyerId].amount;
-            depositList[requestId][buyerId].amount -= amount;
+            uint responseId = requestList[requestId].buyer;
+            uint amount = depositList[requestId][responseId].amount;
+            depositList[requestId][responseId].amount -= amount;
             IERC20(requestList[requestId].tokenB).transfer(msg.sender, amount);
         } else {
             uint amount = requestList[requestId].lockAmount;
@@ -158,15 +158,15 @@ contract RFQ is Ownable {
     * @dev Exchange request buyer whithdraw token from a ended exchange request.
     * @param requestId The exchange request id.
     */
-    function withdraw(uint requestId, uint buyerId) external {
-        require(depositList[requestId][buyerId].owner == msg.sender, "");
+    function withdraw(uint requestId, uint responseId) external {
+        require(depositList[requestId][responseId].owner == msg.sender, "");
         if(requestList[requestId].finish == true && depositList[requestId][requestList[requestId].buyer].owner == msg.sender){
             uint amount = requestList[requestId].lockAmount;
             requestList[requestId].lockAmount -= amount;
             IERC20(requestList[requestId].tokenA).transfer(msg.sender, amount);
         } else {
-            uint amount = depositList[requestId][buyerId].amount;
-            depositList[requestId][buyerId].amount -= amount;
+            uint amount = depositList[requestId][responseId].amount;
+            depositList[requestId][responseId].amount -= amount;
             IERC20(requestList[requestId].tokenB).transfer(msg.sender, amount);
         }
     }
@@ -200,11 +200,11 @@ contract RFQ is Ownable {
     /**
     * @dev Query buyer detail.
     * @param requestId request id.
-    * @param buyerId buyer id.
+    * @param responseId response id.
     * @return Buyer detail.
     */
-    function getBuyer(uint requestId, uint buyerId) external view returns(depositInfo memory){
-        return depositList[requestId][buyerId];
+    function getBuyer(uint requestId, uint responseId) external view returns(depositInfo memory){
+        return depositList[requestId][responseId];
     }
 
 }

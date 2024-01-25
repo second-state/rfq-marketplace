@@ -20,7 +20,7 @@ In the example, we use CyberMiles chain to demo.
 
 Next step, run the following command to run the deploy script.
 ```
-npx hardhat run script/deploy.js --network cyber
+npx hardhat run scripts/deploy.js --network cybermiles
 ```
 
 Then you can see the contract address.
@@ -48,7 +48,7 @@ Fork [this repo](https://github.com/second-state/rfq-marketplace.git).
 
 4. Click on the Advanced text and you will see more settings including branch and environment variables. The function code is stored in `flows` folder, you need to change Directory to `/flows`.
  In this example, we have four variables to fill in, `PRIVATE_KEY` is the wallet private key, and `CONTRACT_ADDRESS` is rfq-market contract [address]( #deploy-the-contract).
-The default network is Arbitrum sepolia. If you want to change the network, you can set `RPC_NODE_URL` and `CHAIN_ID` variable.
+The default network is cybermiles. If you want to change the network, you can set `RPC_NODE_URL` and `CHAIN_ID` variable.
 
 <img width="899" alt="image" src="https://i.imgur.com/xSAxwLF.png">
 
@@ -63,37 +63,37 @@ After that, the flows.network will direct you to configure the SaaS integration 
 ## Try this demo
 ### Create an exchange request
 
-You can use the `create-exchange` function to create a new exchange request. You need to provide three query parameters.<br>
+You can use the `submit-request` function to create a new exchange request. You need to provide three query parameters.<br>
 `tokenA`: The token address you want to exchange out. <br>
 `tokenB`: The token address you want to exchange in. <br>
 `amount`: The amount of tokenA you want to exchange.<br>
-Copy and paste the endpoint URL to your browser and add `/create-exchange?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. Then you can see the transaction result.<br>
+Copy and paste the endpoint URL to your browser and add `/submit-request?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. Then you can see the transaction result.<br>
 (You need to approve enough tokens to rfq contract before creating an exchange request)
 
 <img width="964" alt="image" src="https://i.imgur.com/47UskMW.png">
 
-### Get an exchange request
+### List requests
 
-After creating an exchange request, use the `get-exchange` function to query all the exchange requests.<br>
-Copy and paste the endpoint URL to your browser and add `/get-exchange`.
+After creating an exchange request, use the `list-requests` function to query all the exchange requests.<br>
+Copy and paste the endpoint URL to your browser and add `/list-requests`.
 Then you can see all the exchange requests in the rfq-marketplace.
 
 <img width="964" alt="image" src="https://i.imgur.com/4wJWy9n.png">
 
 ### Response exchange
 
-If you want to exchange tokens with others, use `response-exchange` to respond to other's exchange requests.<br>
-Copy and paste the endpoint URL to your browser and add `/get-exchange?request-id=0`.
+If you want to exchange tokens with others, use `submit-response` to respond to other's exchange requests.<br>
+Copy and paste the endpoint URL to your browser and add `/submit-response?request-id=0`.
 Then you can see the transaction result.<br>
 (You need to approve enough tokens to rfq contract before the response exchange)
 > You need to set the buyer private key in flows.network
 
 <img width="964" alt="image" src="https://i.imgur.com/uFJVaxv.png">
 
-### Get response
+### Get request
 
-You can use `get-response` to query all the buyers of the exchange request. <br>
-Copy and paste the endpoint URL to your browser and add `/get-exchange?request-id=0`.
+You can use `get-request` to query all the buyers of the exchange request. <br>
+Copy and paste the endpoint URL to your browser and add `/get-request?request-id=0`.
 Then you can see the buyer information.
 
 The amount the buyer wants to exchange is the amount of tokenB to you.

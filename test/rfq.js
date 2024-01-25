@@ -5,9 +5,9 @@ const {
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 
-describe("RFQ", function () {
+describe("OtomicMarket", function () {
   async function deployRFQ() {
-    const RFQFactory = await ethers.getContractFactory("RFQ");
+    const RFQFactory = await ethers.getContractFactory("OtomicMarket");
     const requestLiveTime = 10 * 24 * 60 * 60 // 10 day in second
     const rfq = await RFQFactory.deploy(requestLiveTime);
 
@@ -29,11 +29,11 @@ describe("RFQ", function () {
       const { token: tokenB } = await deployToken(buyer, 10);
       
       tokenA.connect(exchangeCreator).approve(rfq.target, 10);
-      let createTx = await rfq.connect(exchangeCreator).createExchange(tokenA.target, tokenB.target, 10);
+      let createTx = await rfq.connect(exchangeCreator).submitRequest(tokenA.target, tokenB.target, 10);
       let receipt = await createTx.wait();
       let requestId = receipt.logs[1].args[1];
       tokenB.connect(buyer).approve(rfq.target, 10);
-      let bidTx = await rfq.connect(buyer).bidToken(requestId, 10);
+      let bidTx = await rfq.connect(buyer).submitResponse(requestId, 10);
       receipt = await bidTx.wait();
       let buyerId = receipt.logs[1].args[0];
       await (await rfq.connect(exchangeCreator).acceptBid(requestId, buyerId)).wait();
