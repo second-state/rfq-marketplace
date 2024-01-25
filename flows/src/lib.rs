@@ -85,9 +85,14 @@ fn init_rpc(path: &str, _qry: &HashMap<String, Value>, _body: Vec<u8>) -> (Strin
     let contract_address = NameOrAddress::from(H160::from_str(std::env::var("CONTRACT_ADDRESS").unwrap().as_str()).unwrap());
     let mut wallet: LocalWallet = LocalWallet::new(&mut thread_rng());
     
-    if let Some(private_key) = serde_json::from_str::<Value>(String::from_utf8(_body).unwrap().as_str()).unwrap().get("PRIVATE_KEY") {
-        let private_key = private_key.as_str().unwrap();
-        wallet = private_key
+    let private_key = String::from_utf8(_body)
+    .ok() 
+    .and_then(|body_str| serde_json::from_str::<Value>(&body_str).ok())
+    .and_then(|json| json.get("PRIVATE_KEY").and_then(|v| v.as_str()).map(|s| s.to_string()));
+
+    if let Some(private_key) = private_key {
+        log::info!("key -- {:?}", private_key);
+        wallet = private_key.as_str()
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
