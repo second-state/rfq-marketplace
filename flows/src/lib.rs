@@ -143,8 +143,8 @@ async fn submit_response(_headers: Vec<(String, String)>, _qry: HashMap<String, 
 async fn accept_exchange(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
     let (rpc_node_url, chain_id, contract_address, wallet) = init_rpc("accept_exchange", &_qry, _body);
     let request_id =  U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
-    let buy_id =  U256::from_dec_str(_qry.get("buy-id").unwrap().as_str().unwrap()).unwrap();
-    let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
+    let response_id =  U256::from_dec_str(_qry.get("response-id").unwrap().as_str().unwrap()).unwrap();
+    let contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(response_id.into())];
     let data = create_contract_call_data("acceptBid", contract_call_params).unwrap();
 
     let tx_params = json!([wrap_transaction(&rpc_node_url, chain_id, wallet, contract_address, data, U256::from(0)).await.unwrap().as_str()]);
@@ -177,8 +177,8 @@ async fn withdraw(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>,
         for idx in 0..len{
             let now = log.get(idx).unwrap();
             if address == format!("0x{}", &now["data"].as_str().unwrap()[26..66]) {
-                let buy_id: U256 = U256::from_str(&(now["topics"][1].to_string()).trim_matches('"')[26..]).unwrap();
-                contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(buy_id.into())];
+                let response_id: U256 = U256::from_str(&(now["topics"][1].to_string()).trim_matches('"')[26..]).unwrap();
+                contract_call_params = vec![Token::Uint(request_id.into()), Token::Uint(response_id.into())];
                 break;
             }
         }
@@ -240,7 +240,7 @@ async fn get_request(_headers: Vec<(String, String)>, _qry: HashMap<String, Valu
     for idx in 0..len{
         let now = log.get(idx).unwrap();
         let new_vec = json!({
-            "buyerId": U256::from_str(&(now["topics"][1].to_string()).trim_matches('"')[26..]).unwrap().to_string(),
+            "responseId": U256::from_str(&(now["topics"][1].to_string()).trim_matches('"')[26..]).unwrap().to_string(),
             "buyer": format!("0x{}", &now["data"].as_str().unwrap()[26..66]),
             "requestId": U256::from_str(&(now["topics"][2].to_string()).trim_matches('"')[2..]).unwrap().to_string(),
             "amount": U256::from_str(&now["data"].as_str().unwrap()[67..130]).unwrap().to_string(),
