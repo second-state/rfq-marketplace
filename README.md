@@ -25,7 +25,7 @@ npx hardhat run scripts/deploy.js --network cybermiles
 
 Then you can see the contract address.
 ```
-Deployed to 0xAe7FEF0Afdaf803E2665Ec6D83D8126D97dFcbFE
+Deployed to 0x21b35E5D3689fF5C6cc1FDF09c1B13438007FaF1
 ```
 
 ## Deploy web service on flows.network
@@ -47,7 +47,7 @@ Fork [this repo](https://github.com/second-state/rfq-marketplace.git).
 3. Authenticate the [flows.network](https://flows.network/) to access the `rfq-marketplace` repo you just forked. 
 
 4. Click on the Advanced text and you will see more settings including branch and environment variables. The function code is stored in `flows` folder, you need to change Directory to `/flows`.
- In this example, we have four variables to fill in, `PRIVATE_KEY` is the wallet private key, and `CONTRACT_ADDRESS` is rfq-market contract [address]( #deploy-the-contract).
+In this example, we have three variables to fill in, `CONTRACT_ADDRESS` is rfq-marketplace contract [address]( #deploy-the-contract).
 The default network is cybermiles. If you want to change the network, you can set `RPC_NODE_URL` and `CHAIN_ID` variable.
 
 <img width="899" alt="image" src="https://i.imgur.com/xSAxwLF.png">
@@ -67,10 +67,14 @@ You can use the `submit-request` function to create a new exchange request. You 
 `tokenA`: The token address you want to exchange out. <br>
 `tokenB`: The token address you want to exchange in. <br>
 `amount`: The amount of tokenA you want to exchange.<br>
-Copy and paste the endpoint URL to your browser and add `/submit-request?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. Then you can see the transaction result.<br>
+In the demo, we use curl to send the post request, you can copy and paste the endpoint URL to your shell and add `/submit-request?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. <br>
 (You need to approve enough tokens to rfq contract before creating an exchange request)
 
-<img width="964" alt="image" src="https://i.imgur.com/47UskMW.png">
+``` shell
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-request?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100" \
+-d '{"PRIVATE_KEY": "Exchange request owner private key"}'
+```
+Then you can see the transaction result.<br>
 
 ### List requests
 
@@ -83,12 +87,14 @@ Then you can see all the exchange requests in the rfq-marketplace.
 ### Response exchange
 
 If you want to exchange tokens with others, use `submit-response` to respond to other's exchange requests.<br>
-Copy and paste the endpoint URL to your browser and add `/submit-response?request-id=0`.
-Then you can see the transaction result.<br>
+You can copy and paste the endpoint URL to your shell and add `/submit-response?request-id=0&amount=10`.
 (You need to approve enough tokens to rfq contract before the response exchange)
-> You need to set the buyer private key in flows.network
 
-<img width="964" alt="image" src="https://i.imgur.com/uFJVaxv.png">
+``` shell
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-response?request-id=0&amount=10" \
+-d '{"PRIVATE_KEY": "Buyer private key"}'
+```
+Then you can see the transaction result.<br>
 
 ### Get request
 
@@ -98,25 +104,32 @@ Then you can see the buyer information.
 
 The amount the buyer wants to exchange is the amount of tokenB to you.
 
-<img width="964" alt="image" src="https://i.imgur.com/ru0B9kB.png">
+<img width="964" alt="image" src="https://i.imgur.com/R0hGFXd.png">
 
 ### Accept exchange
 
 If you are the owner of the exchange request, you have the right to decide which buyer you want to exchange. Using `accept-exchange` to accept the response.
-Copy and paste the endpoint URL to your browser and add `/get-exchange?request-id=0&buy-id=0`.
+You can copy and paste the endpoint URL to your shell and add `/accept-exchange?request-id=0&response-id=0`.
 
-<img width="964" alt="image" src="https://i.imgur.com/7hVz4Kx.png">
-
-> You need to set the owner private key in flows.network
+``` shell
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/accept-exchange?request-id=0&response-id=0" \
+-d '{"PRIVATE_KEY": "Exchange request owner private key"}'
+```
+Then you can see the transaction result.<br>
 
 ### Withdraw
 
-When the request is not finished until exceeds `requestLiveTime` or the owner accepts the exchange, all the buyer and owner can use `withdraw` to withdraw the token that is locked in rfq-marketplace. <br>
+When the request is not finished until exceeds `requestLiveTime` or the owner accepts the exchange, all the buyer and owner can use `withdraw` to withdraw the token that is locked in rfq-marketplace. You can copy and paste the endpoint URL to your shell and add `/withdraw?request-id=0` <br>
 
-> The two following demo images are different private keys that are set in the flows.network to call the function
-
-<img width="964" alt="image" src="https://i.imgur.com/yPCj10R.png">
-<img width="964" alt="image" src="https://i.imgur.com/h4EbPUm.png">
+``` shell
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/withdraw?request-id=0" \
+-d '{"PRIVATE_KEY": "Buyer private key"}'
+```
+``` shell
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/withdraw?request-id=0" \
+-d '{"PRIVATE_KEY": "Exchange request owner private key"}'
+```
+Then you can see the transaction result. The owner and the buyer will get tokenB and tokenA respectively.<br>
 
 > [flows.network](https://flows.network/) is still in its early stages. We would love to hear your feedback!
 
