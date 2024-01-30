@@ -25,7 +25,7 @@ npx hardhat run scripts/deploy.js --network cybermiles
 
 Then you can see the contract address.
 ```
-Deployed to 0x21b35E5D3689fF5C6cc1FDF09c1B13438007FaF1
+Deployed to 0xD80B7630C7D7674b0BBF3bC34328d4CAdcE91FA2
 ```
 
 ## Deploy web service on flows.network
@@ -64,14 +64,14 @@ After that, the flows.network will direct you to configure the SaaS integration 
 ### Create an exchange request
 
 You can use the `submit-request` function to create a new exchange request. You need to provide three query parameters.<br>
-`tokenA`: The token address you want to exchange out. <br>
-`tokenB`: The token address you want to exchange in. <br>
-`amount`: The amount of tokenA you want to exchange.<br>
-In the demo, we use curl to send the post request, you can copy and paste the endpoint URL to your shell and add `/submit-request?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. <br>
+`token-out`: The token address you want to exchange out. <br>
+`token-in`: The token address you want to exchange in. <br>
+`amount`: The amount of token-out you want to exchange.<br>
+In the demo, we use curl to send the post request, you can copy and paste the endpoint URL to your shell and add `/submit-request?token-out=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&token-in=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. <br>
 (You need to approve enough tokens to rfq contract before creating an exchange request)
 
 ``` shell
-curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-request?tokenA=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&tokenB=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100" \
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-request?token-out=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&token-in=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100" \
 -d '{"PRIVATE_KEY": "Exchange request owner private key"}'
 ```
 Then you can see the transaction result.<br>
@@ -87,11 +87,15 @@ Then you can see all the exchange requests in the rfq-marketplace.
 ### Response exchange
 
 If you want to exchange tokens with others, use `submit-response` to respond to other's exchange requests.<br>
-You can copy and paste the endpoint URL to your shell and add `/submit-response?request-id=0&amount=10`.
+You can copy and paste the endpoint URL to your shell and add `/submit-response?request-id=0&amount=10&lifetime=3600`. <br>
+`request-id` : The request you want to exchange. <br>
+`amount` : The amount you want to exchange out ([token-in](#create-an-exchange-request)).<br>
+`lifetime` : This response lifetime unit in seconds. You can withdraw after the lifetime.<br>
+
 (You need to approve enough tokens to rfq contract before the response exchange)
 
 ``` shell
-curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-response?request-id=0&amount=10" \
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-response?request-id=0&amount=10&lifetime=3600" \
 -d '{"PRIVATE_KEY": "Buyer private key"}'
 ```
 Then you can see the transaction result.<br>
@@ -102,13 +106,16 @@ You can use `get-request` to query all the buyers of the exchange request. <br>
 Copy and paste the endpoint URL to your browser and add `/get-request?request-id=0`.
 Then you can see the buyer information.
 
-The amount the buyer wants to exchange is the amount of tokenB to you.
+The amount the buyer wants to exchange is the amount of token-in to you.
 
-<img width="964" alt="image" src="https://i.imgur.com/R0hGFXd.png">
+<img width="964" alt="image" src="https://i.imgur.com/r780Jn6.png">
 
 ### Accept exchange
 
-If you are the owner of the exchange request, you have the right to decide which buyer you want to exchange. Using `accept-exchange` to accept the response.
+If you are the owner of the exchange request, you have the right to decide which buyer you want to exchange.
+> You need accept not expired response.
+
+Using `accept-exchange` to accept the response.
 You can copy and paste the endpoint URL to your shell and add `/accept-exchange?request-id=0&response-id=0`.
 
 ``` shell
@@ -129,7 +136,7 @@ curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/withdraw?r
 curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/withdraw?request-id=0" \
 -d '{"PRIVATE_KEY": "Exchange request owner private key"}'
 ```
-Then you can see the transaction result. The owner and the buyer will get tokenB and tokenA respectively.<br>
+Then you can see the transaction result. The owner and the buyer will get token-in and token-out respectively.<br>
 
 > [flows.network](https://flows.network/) is still in its early stages. We would love to hear your feedback!
 
