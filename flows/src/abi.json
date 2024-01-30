@@ -77,6 +77,12 @@
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "expireTime",
+				"type": "uint256"
 			}
 		],
 		"name": "bidEvent",
@@ -100,13 +106,13 @@
 			{
 				"indexed": false,
 				"internalType": "address",
-				"name": "tokenA",
+				"name": "tokenOut",
 				"type": "address"
 			},
 			{
 				"indexed": false,
 				"internalType": "address",
-				"name": "tokenB",
+				"name": "tokenIn",
 				"type": "address"
 			},
 			{
@@ -163,6 +169,11 @@
 						"internalType": "uint256",
 						"name": "amount",
 						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "expireTime",
+						"type": "uint256"
 					}
 				],
 				"internalType": "struct OtomicMarket.depositInfo",
@@ -211,12 +222,12 @@
 					},
 					{
 						"internalType": "address",
-						"name": "tokenA",
+						"name": "tokenOut",
 						"type": "address"
 					},
 					{
 						"internalType": "address",
-						"name": "tokenB",
+						"name": "tokenIn",
 						"type": "address"
 					},
 					{
@@ -316,12 +327,12 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "tokenA",
+				"name": "tokenOut",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
-				"name": "tokenB",
+				"name": "tokenIn",
 				"type": "address"
 			},
 			{
@@ -351,6 +362,11 @@
 			{
 				"internalType": "uint256",
 				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lifetime",
 				"type": "uint256"
 			}
 		],

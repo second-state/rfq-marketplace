@@ -25,23 +25,23 @@ describe("OtomicMarket", function () {
     it("Full exchange process", async function () {
       const [owner, exchangeCreator, buyer] = await ethers.getSigners();
       const { rfq, requestLiveTime } = await deployRFQ();
-      const { token: tokenA } = await deployToken(exchangeCreator, 10);
-      const { token: tokenB } = await deployToken(buyer, 10);
+      const { token: token_out } = await deployToken(exchangeCreator, 10);
+      const { token: token_in } = await deployToken(buyer, 10);
       
-      tokenA.connect(exchangeCreator).approve(rfq.target, 10);
-      let createTx = await rfq.connect(exchangeCreator).submitRequest(tokenA.target, tokenB.target, 10);
+      token_out.connect(exchangeCreator).approve(rfq.target, 10);
+      let createTx = await rfq.connect(exchangeCreator).submitRequest(token_out.target, token_in.target, 10);
       let receipt = await createTx.wait();
       let requestId = receipt.logs[1].args[1];
-      tokenB.connect(buyer).approve(rfq.target, 10);
-      let bidTx = await rfq.connect(buyer).submitResponse(requestId, 10);
+      token_in.connect(buyer).approve(rfq.target, 10);
+      let bidTx = await rfq.connect(buyer).submitResponse(requestId, 10, 60);
       receipt = await bidTx.wait();
       let buyerId = receipt.logs[1].args[0];
       await (await rfq.connect(exchangeCreator).acceptBid(requestId, buyerId)).wait();
       await (await rfq.connect(exchangeCreator)["withdraw(uint256)"](requestId)).wait();
       await (await rfq.connect(buyer)["withdraw(uint256,uint256)"](requestId, buyerId)).wait();
       
-      expect(await tokenA.balanceOf(buyer)).to.equal(10);
-      expect(await tokenB.balanceOf(exchangeCreator)).to.equal(10);
+      expect(await token_out.balanceOf(buyer)).to.equal(10);
+      expect(await token_in.balanceOf(exchangeCreator)).to.equal(10);
     });
 
   });

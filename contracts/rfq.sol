@@ -9,20 +9,21 @@ import './OpenZeppelin_v4_9_0/openzeppelin-contracts/contracts/access/Ownable.so
  */
 contract OtomicMarket is Ownable {
     
-    event exchangeEvent(address indexed owner, uint indexed requestId, address tokenA, address tokenB, uint amount);
-    event bidEvent(uint indexed responseId, address buyer, uint indexed requestId, uint amount);
+    event exchangeEvent(address indexed owner, uint indexed requestId, address tokenOut, address tokenIn, uint amount);
+    event bidEvent(uint indexed responseId, address buyer, uint indexed requestId, uint amount, uint expireTime);
 
     // Buyer detai;
     struct depositInfo {
         address owner;
         uint amount;
+        uint expireTime;
     }
     
     // Exchange require detail
     struct requestInfo {
         address owner;
-        address tokenA;
-        address tokenB; 
+        address tokenOut;
+        address tokenIn; 
         uint lockAmount;
         uint depositSize;
         uint expireTime;
@@ -48,9 +49,9 @@ contract OtomicMarket is Ownable {
     */
     modifier checkRequestStatus(uint id, bool isValid) {
         if(isValid){
-            require(block.timestamp <= requestList[id].expireTime || !requestList[id].finish, "");
+            require(block.timestamp <= requestList[id].expireTime || !requestList[id].finish, "This request is not valid.");
         } else {
-            require(block.timestamp > requestList[id].expireTime || requestList[id].finish, "");
+            require(block.timestamp > requestList[id].expireTime || requestList[id].finish, "This request is still valid.");
         }
         _;
     }
@@ -81,46 +82,48 @@ contract OtomicMarket is Ownable {
 
     /**
     * @dev Create an exchange request.
-    * @param tokenA ERC 20 contract address that the caller wants to swap out.
-    * @param tokenB ERC 20 contract address that the caller wants to swap in.
-    * @param amount Amount of tokenA that the caller wants to swap out.
+    * @param tokenOut ERC 20 contract address that the caller wants to swap out.
+    * @param tokenIn ERC 20 contract address that the caller wants to swap in.
+    * @param amount Amount of tokenOut that the caller wants to swap out.
     * @return Request id.
     */
-    function submitRequest(address tokenA, address tokenB, uint amount) external checkApprove(tokenA, amount) returns(uint) {
-        IERC20(tokenA).transferFrom(msg.sender, address(this), amount);
+    function submitRequest(address tokenOut, address tokenIn, uint amount) external checkApprove(tokenOut, amount) returns(uint) {
+        IERC20(tokenOut).transferFrom(msg.sender, address(this), amount);
         uint requestId = requestList.length;
         requestList.push();
         requestInfo storage newRequest = requestList[requestId];
         newRequest.owner = msg.sender;
-        newRequest.tokenA = tokenA;
-        newRequest.tokenB = tokenB;
+        newRequest.tokenOut = tokenOut;
+        newRequest.tokenIn = tokenIn;
         newRequest.lockAmount = amount;
         newRequest.expireTime = block.timestamp + requestLiveTime;
         newRequest.finish = false;
-        emit exchangeEvent(msg.sender, requestId, tokenA, tokenB, amount);
+        emit exchangeEvent(msg.sender, requestId, tokenOut, tokenIn, amount);
         return requestId;
     }
 
 
     /**
-    * @dev Response an exchange request with the amount of tokenB to buy tokenA.
+    * @dev Response an exchange request with the amount of tokenIn to buy tokenOut.
     * @param requestId The exchange request id.
-    * @param amount The amount of tokenB that the caller wants to swap out.
+    * @param amount The amount of tokenIn that the caller wants to swap out.
+    * @param lifetime The response lifetime.
     * @return The responseId of the caller response.
     */
-    function submitResponse(uint requestId, uint amount) 
+    function submitResponse(uint requestId, uint amount, uint lifetime) 
     external 
     checkRequestStatus(requestId, true)
-    checkApprove(requestList[requestId].tokenB, amount)
+    checkApprove(requestList[requestId].tokenIn, amount)
     returns(uint){
-        IERC20(requestList[requestId].tokenB).transferFrom(msg.sender, address(this), amount);
+        IERC20(requestList[requestId].tokenIn).transferFrom(msg.sender, address(this), amount);
         depositInfo memory newDeposit;
         newDeposit.owner = msg.sender;
         newDeposit.amount = amount;
+        newDeposit.expireTime = block.timestamp + lifetime;
         uint responseId = requestList[requestId].depositSize;
         requestList[requestId].depositSize += 1;
         depositList[requestId][responseId] = newDeposit;
-        emit bidEvent(responseId, msg.sender, requestId, amount);
+        emit bidEvent(responseId, msg.sender, requestId, amount, newDeposit.expireTime);
         return responseId;
     }
 
@@ -131,7 +134,8 @@ contract OtomicMarket is Ownable {
     * @param responseId Accept the exchange with the response id, which id is the index of depositList.
     */
     function acceptBid(uint requestId, uint responseId) external checkRequestStatus(requestId, true) {
-        require(requestList[requestId].owner == msg.sender , "");
+        require(requestList[requestId].owner == msg.sender , "You are not the reequest owner.");
+        require(block.timestamp <= depositList[requestId][responseId].expireTime , "This response has expired.");
         requestList[requestId].finish = true;
         requestList[requestId].buyer = responseId;
     }
@@ -141,16 +145,16 @@ contract OtomicMarket is Ownable {
     * @param requestId The exchange request id.
     */
     function withdraw(uint requestId) external checkRequestStatus(requestId, false) {
-        require(requestList[requestId].owner == msg.sender, "");
+        require(requestList[requestId].owner == msg.sender, "You are not the reequest owner.");
         if(requestList[requestId].finish == true){
             uint responseId = requestList[requestId].buyer;
             uint amount = depositList[requestId][responseId].amount;
             depositList[requestId][responseId].amount -= amount;
-            IERC20(requestList[requestId].tokenB).transfer(msg.sender, amount);
+            IERC20(requestList[requestId].tokenIn).transfer(msg.sender, amount);
         } else {
             uint amount = requestList[requestId].lockAmount;
             requestList[requestId].lockAmount -= amount;
-            IERC20(requestList[requestId].tokenA).transfer(msg.sender, amount);
+            IERC20(requestList[requestId].tokenOut).transfer(msg.sender, amount);
         }
     }
 
@@ -159,15 +163,16 @@ contract OtomicMarket is Ownable {
     * @param requestId The exchange request id.
     */
     function withdraw(uint requestId, uint responseId) external {
-        require(depositList[requestId][responseId].owner == msg.sender, "");
+        require(depositList[requestId][responseId].owner == msg.sender, "You are not the response owner.");
+        require(block.timestamp > requestList[requestId].expireTime || requestList[requestId].finish || block.timestamp > depositList[requestId][responseId].expireTime, "This request or response is still valid.");
         if(requestList[requestId].finish == true && depositList[requestId][requestList[requestId].buyer].owner == msg.sender){
             uint amount = requestList[requestId].lockAmount;
             requestList[requestId].lockAmount -= amount;
-            IERC20(requestList[requestId].tokenA).transfer(msg.sender, amount);
+            IERC20(requestList[requestId].tokenOut).transfer(msg.sender, amount);
         } else {
             uint amount = depositList[requestId][responseId].amount;
             depositList[requestId][responseId].amount -= amount;
-            IERC20(requestList[requestId].tokenB).transfer(msg.sender, amount);
+            IERC20(requestList[requestId].tokenIn).transfer(msg.sender, amount);
         }
     }
 
