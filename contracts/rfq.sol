@@ -9,7 +9,7 @@ import './OpenZeppelin_v4_9_0/openzeppelin-contracts/contracts/access/Ownable.so
  */
 contract OtomicMarket is Ownable {
     
-    event exchangeEvent(address indexed owner, uint indexed requestId, address tokenOut, address tokenIn, uint amount);
+    event exchangeEvent(address indexed owner, uint indexed requestId, address tokenOut, address tokenIn, uint amount, uint expireTime);
     event bidEvent(uint indexed responseId, address buyer, uint indexed requestId, uint amount, uint expireTime);
 
     // Buyer detai;
@@ -33,15 +33,15 @@ contract OtomicMarket is Ownable {
     
     
     requestInfo[] private requestList;
-    uint private requestLiveTime;
+    uint private requestLifetime;
     mapping(uint => mapping(uint => depositInfo)) private depositList;
 
     /**
     * @dev Initialize RFQ necessary parameters.
-    * @param _requestLiveTime Request validity period.
+    * @param _requestLifetime Request validity period.
     */
-    constructor(uint _requestLiveTime) Ownable(msg.sender){
-        requestLiveTime = _requestLiveTime;
+    constructor(uint _requestLifetime) Ownable(msg.sender){
+        requestLifetime = _requestLifetime;
     }
 
     /**
@@ -65,19 +65,19 @@ contract OtomicMarket is Ownable {
     }
 
     /**
-    * @dev Set requestLiveTime
-    * @param _requestLiveTime new requestLiveTime value
+    * @dev Set requestLifetime
+    * @param _requestLifetime new requestLifetime value
     */
-    function setRequestLiveTime(uint _requestLiveTime) external onlyOwner() {
-        requestLiveTime = _requestLiveTime;
+    function setRequestLifetime(uint _requestLifetime) external onlyOwner() {
+        requestLifetime = _requestLifetime;
     }
 
     /**
-    * @dev Get requestLiveTime
-    * @return requestLiveTime value
+    * @dev Get requestLifetime
+    * @return requestLifetime value
     */
-    function getRequestLiveTime() external view returns(uint) {
-        return requestLiveTime;
+    function getRequestLifetime() external view returns(uint) {
+        return requestLifetime;
     }
 
     /**
@@ -87,7 +87,7 @@ contract OtomicMarket is Ownable {
     * @param amount Amount of tokenOut that the caller wants to swap out.
     * @return Request id.
     */
-    function submitRequest(address tokenOut, address tokenIn, uint amount) external checkApprove(tokenOut, amount) returns(uint) {
+    function submitRequest(address tokenOut, address tokenIn, uint amount, uint lifetime) external checkApprove(tokenOut, amount) returns(uint) {
         IERC20(tokenOut).transferFrom(msg.sender, address(this), amount);
         uint requestId = requestList.length;
         requestList.push();
@@ -96,9 +96,13 @@ contract OtomicMarket is Ownable {
         newRequest.tokenOut = tokenOut;
         newRequest.tokenIn = tokenIn;
         newRequest.lockAmount = amount;
-        newRequest.expireTime = block.timestamp + requestLiveTime;
+        if(lifetime == 0){
+            newRequest.expireTime = block.timestamp + requestLifetime;
+        }else{
+            newRequest.expireTime = block.timestamp + lifetime;
+        }
         newRequest.finish = false;
-        emit exchangeEvent(msg.sender, requestId, tokenOut, tokenIn, amount);
+        emit exchangeEvent(msg.sender, requestId, tokenOut, tokenIn, amount, newRequest.expireTime);
         return requestId;
     }
 
@@ -119,7 +123,11 @@ contract OtomicMarket is Ownable {
         depositInfo memory newDeposit;
         newDeposit.owner = msg.sender;
         newDeposit.amount = amount;
-        newDeposit.expireTime = block.timestamp + lifetime;
+        if(lifetime == 0){
+            newDeposit.expireTime = requestList[requestId].expireTime;
+        }else{
+            newDeposit.expireTime = block.timestamp + lifetime;
+        }
         uint responseId = requestList[requestId].depositSize;
         requestList[requestId].depositSize += 1;
         depositList[requestId][responseId] = newDeposit;

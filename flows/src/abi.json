@@ -120,6 +120,12 @@
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "expireTime",
+				"type": "uint256"
 			}
 		],
 		"name": "exchangeEvent",
@@ -338,6 +344,11 @@
 			{
 				"internalType": "uint256",
 				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lifetime",
 				"type": "uint256"
 			}
 		],

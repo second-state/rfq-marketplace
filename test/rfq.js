@@ -8,10 +8,10 @@ const { expect } = require("chai");
 describe("OtomicMarket", function () {
   async function deployRFQ() {
     const RFQFactory = await ethers.getContractFactory("OtomicMarket");
-    const requestLiveTime = 10 * 24 * 60 * 60 // 10 day in second
-    const rfq = await RFQFactory.deploy(requestLiveTime);
+    const requestLifetime = 10 * 24 * 60 * 60 // 10 day in second
+    const rfq = await RFQFactory.deploy(requestLifetime);
 
-    return { rfq, requestLiveTime };
+    return { rfq, requestLifetime };
   }
 
   async function deployToken(to, amount) {
@@ -24,7 +24,7 @@ describe("OtomicMarket", function () {
   describe("Deployment", function () {
     it("Full exchange process", async function () {
       const [owner, exchangeCreator, buyer] = await ethers.getSigners();
-      const { rfq, requestLiveTime } = await deployRFQ();
+      const { rfq, requestLifetime } = await deployRFQ();
       const { token: token_out } = await deployToken(exchangeCreator, 10);
       const { token: token_in } = await deployToken(buyer, 10);
       
