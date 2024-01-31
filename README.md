@@ -67,11 +67,12 @@ You can use the `submit-request` function to create a new exchange request. You 
 `token-out`: The token address you want to exchange out. <br>
 `token-in`: The token address you want to exchange in. <br>
 `amount`: The amount of token-out you want to exchange.<br>
+`lifetime`(option) : This request lifetime unit in seconds, default is `requestLifetime`. <br>
 In the demo, we use curl to send the post request, you can copy and paste the endpoint URL to your shell and add `/submit-request?token-out=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&token-in=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100`. <br>
 (You need to approve enough tokens to rfq contract before creating an exchange request)
 
 ``` shell
-curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-request?token-out=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&token-in=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100" \
+curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/submit-request?token-out=0x30D30c71d8618Ce42783eDd2C7Ae6f15eeD69Fec&token-in=0x948Fa9010EFBEed5f4943893a383B7e2210bA145&amount=100&lifetime=3600" \
 -d '{"PRIVATE_KEY": "Exchange request owner private key"}'
 ```
 Then you can see the transaction result.<br>
@@ -82,7 +83,7 @@ After creating an exchange request, use the `list-requests` function to query al
 Copy and paste the endpoint URL to your browser and add `/list-requests`.
 Then you can see all the exchange requests in the rfq-marketplace.
 
-<img width="964" alt="image" src="https://i.imgur.com/4wJWy9n.png">
+<img width="964" alt="image" src="https://i.imgur.com/nK8ks1Z.png">
 
 ### Response exchange
 
@@ -90,7 +91,7 @@ If you want to exchange tokens with others, use `submit-response` to respond to 
 You can copy and paste the endpoint URL to your shell and add `/submit-response?request-id=0&amount=10&lifetime=3600`. <br>
 `request-id` : The request you want to exchange. <br>
 `amount` : The amount you want to exchange out ([token-in](#create-an-exchange-request)).<br>
-`lifetime` : This response lifetime unit in seconds. You can withdraw after the lifetime.<br>
+`lifetime`(option) : This response lifetime unit in seconds, default is the same as request lifetime. You can withdraw after the lifetime.<br>
 
 (You need to approve enough tokens to rfq contract before the response exchange)
 
@@ -108,7 +109,7 @@ Then you can see the buyer information.
 
 The amount the buyer wants to exchange is the amount of token-in to you.
 
-<img width="964" alt="image" src="https://i.imgur.com/r780Jn6.png">
+<img width="964" alt="image" src="https://i.imgur.com/fBwhn0V.png">
 
 ### Accept exchange
 
@@ -126,7 +127,7 @@ Then you can see the transaction result.<br>
 
 ### Withdraw
 
-When the request is not finished until exceeds `requestLiveTime` or the owner accepts the exchange, all the buyer and owner can use `withdraw` to withdraw the token that is locked in rfq-marketplace. You can copy and paste the endpoint URL to your shell and add `/withdraw?request-id=0` <br>
+When the request is not finished until exceeds `expire_time` or the owner accepts the exchange, all the buyer and owner can use `withdraw` to withdraw the token that is locked in rfq-marketplace. You can copy and paste the endpoint URL to your shell and add `/withdraw?request-id=0` <br>
 
 ``` shell
 curl -X POST "https://code.flows.network/webhook/ekbbxC47MjjtIaP8RmO8/withdraw?request-id=0" \
