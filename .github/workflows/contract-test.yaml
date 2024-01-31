@@ -1,0 +1,25 @@
+name: Contract Tests
+on:
+  push:
+  pull_request:
+    
+jobs:      
+  contract-offline-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Initial hardhat project
+      run: |
+        npm install
+        
+    - name: Test contract
+      run: |
+        cd test
+        npx hardhat test

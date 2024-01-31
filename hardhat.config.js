@@ -1,7 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 
-// const priKey1 = "Your private key.";
-const priKey1 = process.env.PRIKEY1
+const priKey1 = undefined; // Please provide your private key to deploy contract.
 
 module.exports = {
   solidity: "0.8.20",
@@ -9,7 +8,7 @@ module.exports = {
     cybermiles: {
       url: "https://mainnet.cybermiles.io",
       gas: 1000000000,
-      accounts:[priKey1]
+      accounts: (priKey1 ? [priKey1] : [])
     }
   },
 };

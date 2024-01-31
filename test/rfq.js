@@ -29,11 +29,11 @@ describe("OtomicMarket", function () {
       const { token: token_in } = await deployToken(buyer, 10);
       
       token_out.connect(exchangeCreator).approve(rfq.target, 10);
-      let createTx = await rfq.connect(exchangeCreator).submitRequest(token_out.target, token_in.target, 10);
+      let createTx = await rfq.connect(exchangeCreator).submitRequest(token_out.target, token_in.target, 10, 0);
       let receipt = await createTx.wait();
       let requestId = receipt.logs[1].args[1];
       token_in.connect(buyer).approve(rfq.target, 10);
-      let bidTx = await rfq.connect(buyer).submitResponse(requestId, 10, 60);
+      let bidTx = await rfq.connect(buyer).submitResponse(requestId, 10, 0);
       receipt = await bidTx.wait();
       let buyerId = receipt.logs[1].args[0];
       await (await rfq.connect(exchangeCreator).acceptBid(requestId, buyerId)).wait();
