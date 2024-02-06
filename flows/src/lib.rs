@@ -218,7 +218,7 @@ async fn list_requests(_headers: Vec<(String, String)>, _qry: HashMap<String, Va
             "owner": format!("0x{}", &(now["topics"][1].to_string()).trim_matches('"')[26..]),
             "requestId": U256::from_str(&(now["topics"][2].to_string()).trim_matches('"')[2..]).unwrap().to_string(),
             "token_out": format!("0x{}", &now["data"].as_str().unwrap()[26..66]),
-            "token_in": format!("0x{}", &now["data"].as_str().unwrap()[67..130]),
+            "token_in": format!("0x{}", &now["data"].as_str().unwrap()[90..130]),
             "amount": U256::from_str(&now["data"].as_str().unwrap()[131..194]).unwrap().to_string(),
             "expire_time": U256::from_str(&now["data"].as_str().unwrap()[195..258]).unwrap().to_string(),
         });
