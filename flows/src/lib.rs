@@ -6,7 +6,7 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::str::FromStr;
 use ethers_signers::{LocalWallet, Signer};
-use ethers_core::types::{NameOrAddress, U256, H160};
+use ethers_core::{abi::AbiEncode, types::{NameOrAddress, H160, U256}};
 use ethers_core::abi::Token;
 use ethers_core::rand::thread_rng;
 
@@ -236,8 +236,9 @@ async fn list_requests(_headers: Vec<(String, String)>, _qry: HashMap<String, Va
 async fn get_request(_headers: Vec<(String, String)>, _qry: HashMap<String, Value>, _body: Vec<u8>){
     let (rpc_node_url, _, contract_address, _) = init_rpc("get_request", &_qry, _body);
     let contract_address = format!("{:?}", contract_address.as_address().unwrap());
+    let request_id = U256::from_dec_str(_qry.get("request-id").unwrap().as_str().unwrap()).unwrap();
     // Keccak-256 bidEvent(uint256,address,uint256,uint256,uint256)
-    let log = get_log(&rpc_node_url, &contract_address, json!(["0x04a02541703318cd8f9e95f53f8a3e93327acfef4a41ba01dfd2bdd5623cfb6a"])).await.unwrap();
+    let log = get_log(&rpc_node_url, &contract_address, json!(["0x04a02541703318cd8f9e95f53f8a3e93327acfef4a41ba01dfd2bdd5623cfb6a", null, request_id.encode_hex()])).await.unwrap();
     let mut event: Vec<Value> = vec!();
     let len = log.as_array().unwrap().len();
     for idx in 0..len{
